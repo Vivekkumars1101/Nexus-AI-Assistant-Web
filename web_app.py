@@ -18,11 +18,12 @@ from google.genai import types
 # --- CRITICAL FIX: Load .env file at startup ---
 load_dotenv() 
 
-# --- 0. Configuration and Memory Setup (Omitted for brevity) ---
+# --- 0. Configuration and Memory Setup ---
+
 MEMORY_FILE = Path("assistant_memory.json")
-# ... (load_memory, save_memory, etc. functions here) ...
 
 def load_memory():
+    """Loads long-term memory notes from the JSON file."""
     if MEMORY_FILE.exists():
         try:
             with open(MEMORY_FILE, 'r') as f:
@@ -33,24 +34,31 @@ def load_memory():
     return []
 
 def save_memory(notes):
+    """Saves the current list of long-term notes to the JSON file."""
     with open(MEMORY_FILE, 'w') as f:
         json.dump(notes, f, indent=4)
 
+# Global memory storage
 PERSONAL_NOTES = load_memory()
-print(f"Loaded {len(PERSONAL_NOTES)} personal notes from memory.")
 
-# --- 1. Global Tool Setup and Definitions (Omitted for brevity) ---
+
+# --- 1. Global Tool Setup and Definitions ---
+
 def tool_output(text):
+    """Prints tool execution text to the console/log for debugging."""
     print(f"[TOOL LOG] {text}")
     return text
 
 AVAILABLE_TOOLS = {}
 def add_tool(func):
+    """Decorator to automatically add functions to the AVAILABLE_TOOLS map."""
     AVAILABLE_TOOLS[func.__name__] = func
     return func
 
+# Standard Web/Time Tools
 @add_tool
 def web_search(query: str):
+    """Searches the web using Google and opens the default browser to the search results."""
     tool_output(f"Opening web search for: {query}")
     try:
         webbrowser.open_new_tab(f"https://www.google.com/search?q={query}")
@@ -60,9 +68,12 @@ def web_search(query: str):
 
 @add_tool
 def play_on_youtube(topic: str):
+    """Opens YouTube and searches for the video topic."""
     tool_output(f"Switching to direct YouTube search for: {topic}")
+    
     search_query = f"{topic} song" 
     url = f"https://www.youtube.com/results?search_query={search_query}"
+    
     try:
         webbrowser.open_new_tab(url)
         return f"I have successfully searched for '{topic}' on YouTube and opened the results in a new tab for you, VIVEK."
@@ -71,11 +82,14 @@ def play_on_youtube(topic: str):
 
 @add_tool
 def check_current_time():
+    """Returns the current local time."""
     now = datetime.datetime.now().strftime("%I:%M %p")
     return f"The current time is {now}"
 
+# Memory Tools
 @add_tool
 def add_personal_note(note_text: str):
+    """Saves a piece of personal information or a key preference for later retrieval."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     PERSONAL_NOTES.append({'time': timestamp, 'note': note_text})
     save_memory(PERSONAL_NOTES)
@@ -83,17 +97,22 @@ def add_personal_note(note_text: str):
 
 @add_tool
 def retrieve_personal_notes(query: str):
-    if not PERSONAL_NOTES: return "I have no personal notes saved yet."
+    """Returns all stored personal notes for the AI to process."""
+    if not PERSONAL_NOTES:
+        return "I have no personal notes saved yet."
     note_strings = [f"Time: {n['time']}, Note: {n['note']}" for n in PERSONAL_NOTES]
     return "The user's stored notes are:\n" + "\n".join(note_strings)
 
+# Utility Tools
 @add_tool
 def open_application(app_name: str):
+    """Simulates the command to open an application."""
     tool_output(f"Simulating launch of application: {app_name}")
     return f"I have sent the command to launch the application '{app_name}'. (Note: This is simulated in the web environment.)"
 
 @add_tool
 def set_reminder(time_string: str, reminder_text: str):
+    """Simulates setting a reminder."""
     tool_output(f"Simulating reminder set for {time_string}.")
     return f"I have set a reminder for '{reminder_text}' in {time_string}. I will notify you then. (Note: Notification is simulated.)"
 
@@ -185,7 +204,7 @@ def handle_full_request(prompt):
 for message in st.session_state.messages:
     # Set custom avatar icon for user (🧑‍💻) and assistant (🤖)
     avatar = "🧑‍💻" if message["role"] == "user" else "🤖"
-    with st.chat_message(message["role"], avatar=avatar): # <-- FIX APPLIED HERE
+    with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"]) 
 
 # --- Multimodal File Uploader in the sidebar ---
@@ -199,17 +218,20 @@ if prompt := st.chat_input("Ask Nexus a question or command a task..."):
     
     # 1. Add user message to history and display it
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user", avatar="🧑‍💻"): # <-- FIX APPLIED HERE
+    with st.chat_message("user", avatar="🧑‍💻"):
         st.markdown(prompt)
 
     # 2. Get and display Nexus's response
-    with st.chat_message("assistant", avatar="🤖"): # <-- FIX APPLIED HERE
+    with st.chat_message("assistant", avatar="🤖"):
         with st.spinner("Nexus is thinking..."):
             
             # --- Determine if this is a MULTIMODAL request ---
             if uploaded_file is not None:
                 try:
+                    # Read image data
                     image_data = Image.open(uploaded_file)
+                    
+                    # Call the specialized multimodal handler
                     response_text = handle_multimodal_request(image_data, prompt)
                 
                 except Exception as e:
