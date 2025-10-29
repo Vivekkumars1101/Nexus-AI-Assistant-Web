@@ -3,9 +3,7 @@ import os
 import json
 import re
 import webbrowser
-import pywhatkit
 import datetime
-import threading
 from pathlib import Path
 from PIL import Image
 from io import BytesIO
@@ -61,6 +59,7 @@ def web_search(query: str):
     """Searches the web using Google and opens the default browser to the search results."""
     tool_output(f"Opening web search for: {query}")
     try:
+        # **CLEAN WEB SOLUTION**
         webbrowser.open_new_tab(f"https://www.google.com/search?q={query}")
         return f"I have opened a web search for '{query}' in a new tab."
     except Exception as e:
@@ -75,6 +74,7 @@ def play_on_youtube(topic: str):
     url = f"https://www.youtube.com/results?search_query={search_query}"
     
     try:
+        # **CLEAN WEB SOLUTION**
         webbrowser.open_new_tab(url)
         return f"I have successfully searched for '{topic}' on YouTube and opened the results in a new tab for you, VIVEK."
     except Exception as e:
