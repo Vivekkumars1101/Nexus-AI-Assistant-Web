@@ -19,6 +19,7 @@ load_dotenv()
 # --- 0. Configuration and Memory Setup ---
 
 MEMORY_FILE = Path("assistant_memory.json")
+CHAT_HISTORY_FILE = Path("chat_history.json") 
 
 def load_memory():
     """Loads long-term memory notes from the JSON file."""
@@ -36,9 +37,34 @@ def save_memory(notes):
     with open(MEMORY_FILE, 'w') as f:
         json.dump(notes, f, indent=4)
 
-# Global memory storage
-PERSONAL_NOTES = load_memory()
+def load_chat_history():
+    """Loads chat history from JSON file for persistence."""
+    if CHAT_HISTORY_FILE.exists():
+        with open(CHAT_HISTORY_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return []
 
+def save_chat_history(history):
+    """Saves the current chat history list to JSON file."""
+    serializable_history = []
+    
+    for content in history:
+        serializable_parts = [
+            {'text': part.text} 
+            for part in content.parts if part.text
+        ]
+        if serializable_parts:
+            serializable_history.append({
+                'role': content.role,
+                'parts': serializable_parts
+            })
+        
+    with open(CHAT_HISTORY_FILE, 'w', encoding='utf-8') as f:
+        json.dump(serializable_history, f, indent=4)
+
+
+PERSONAL_NOTES = load_memory()
+print(f"Loaded {len(PERSONAL_NOTES)} personal notes from memory.")
 
 # --- 1. Global Tool Setup and Definitions ---
 
@@ -59,7 +85,6 @@ def web_search(query: str):
     """Searches the web using Google and opens the default browser to the search results."""
     tool_output(f"Opening web search for: {query}")
     try:
-        # **CLEAN WEB SOLUTION**
         webbrowser.open_new_tab(f"https://www.google.com/search?q={query}")
         return f"I have opened a web search for '{query}' in a new tab."
     except Exception as e:
@@ -74,7 +99,6 @@ def play_on_youtube(topic: str):
     url = f"https://www.youtube.com/results?search_query={search_query}"
     
     try:
-        # **CLEAN WEB SOLUTION**
         webbrowser.open_new_tab(url)
         return f"I have successfully searched for '{topic}' on YouTube and opened the results in a new tab for you, VIVEK."
     except Exception as e:
@@ -140,7 +164,7 @@ if "chat_session" not in st.session_state:
     
     tool_config = types.GenerateContentConfig(
         tools=tool_list,
-        # *** System Instruction refined to prioritize internal knowledge ***
+        # *** Final System Instruction Fix: Prioritize internal knowledge ***
         system_instruction="You are a dedicated, witty, and highly capable personal AI assistant named 'Nexus'. Your name is NEXUS.AI and the user's name is VIVEK. **Only use the web_search tool for requests requiring current, real-time data (like news or stock prices), or for opening a specific website/video. For general knowledge and definitions (like 'what is RAM'), answer using your internal knowledge base directly.** You process image requests if a file is uploaded, and use tools to perform actions. Keep responses concise and professional."
     )
 
@@ -225,21 +249,27 @@ if prompt := st.chat_input("Ask Nexus a question or command a task..."):
     with st.chat_message("assistant", avatar="🤖"):
         with st.spinner("Nexus is thinking..."):
             
-            # --- Determine if this is a MULTIMODAL request ---
-            if uploaded_file is not None:
-                try:
-                    # Read image data
+            response_text = ""
+            
+            try:
+                # --- Determine if this is a MULTIMODAL request ---
+                if uploaded_file is not None:
+                    # Multimodal handler (image is already loaded via Streamlit's file_uploader)
                     image_data = Image.open(uploaded_file)
-                    
-                    # Call the specialized multimodal handler
                     response_text = handle_multimodal_request(image_data, prompt)
                 
-                except Exception as e:
-                    response_text = f"Error processing image: {e}"
-            
-            else:
-                # --- Standard TEXT/TOOL request ---
-                response_text = handle_full_request(prompt)
+                else:
+                    # --- Standard TEXT/TOOL request ---
+                    response_text = handle_full_request(prompt)
+        
+            except Exception as e:
+                # *** FINAL SERVER/API ERROR HANDLING FIX ***
+                error_message = str(e)
+                if "ServerError" in error_message or "unavailable" in error_message.lower() or "429" in error_message:
+                    response_text = "I apologize, VIVEK. I'm experiencing a temporary server capacity issue right now. Please wait a moment and try that command again."
+                else:
+                    response_text = f"An unexpected internal error occurred: {e}"
+            # *** END ERROR HANDLING ***
         
         st.markdown(response_text)
         st.session_state.messages.append({"role": "assistant", "content": response_text})
