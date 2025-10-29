@@ -19,7 +19,6 @@ load_dotenv()
 # --- 0. Configuration and Memory Setup ---
 
 MEMORY_FILE = Path("assistant_memory.json")
-CHAT_HISTORY_FILE = Path("chat_history.json") 
 
 def load_memory():
     """Loads long-term memory notes from the JSON file."""
@@ -37,34 +36,9 @@ def save_memory(notes):
     with open(MEMORY_FILE, 'w') as f:
         json.dump(notes, f, indent=4)
 
-def load_chat_history():
-    """Loads chat history from JSON file for persistence."""
-    if CHAT_HISTORY_FILE.exists():
-        with open(CHAT_HISTORY_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    return []
-
-def save_chat_history(history):
-    """Saves the current chat history list to JSON file."""
-    serializable_history = []
-    
-    for content in history:
-        serializable_parts = [
-            {'text': part.text} 
-            for part in content.parts if part.text
-        ]
-        if serializable_parts:
-            serializable_history.append({
-                'role': content.role,
-                'parts': serializable_parts
-            })
-        
-    with open(CHAT_HISTORY_FILE, 'w', encoding='utf-8') as f:
-        json.dump(serializable_history, f, indent=4)
-
-
+# Global memory storage
 PERSONAL_NOTES = load_memory()
-print(f"Loaded {len(PERSONAL_NOTES)} personal notes from memory.")
+
 
 # --- 1. Global Tool Setup and Definitions ---
 
@@ -82,27 +56,23 @@ def add_tool(func):
 # Standard Web/Time Tools
 @add_tool
 def web_search(query: str):
-    """Searches the web using Google and opens the default browser to the search results."""
-    tool_output(f"Opening web search for: {query}")
-    try:
-        webbrowser.open_new_tab(f"https://www.google.com/search?q={query}")
-        return f"I have opened a web search for '{query}' in a new tab."
-    except Exception as e:
-        return f"Error simulating web search: {e}"
+    """Returns a clickable link for a Google search query."""
+    tool_output(f"Generating search link for: {query}")
+    
+    url = f"https://www.google.com/search?q={query}"
+    # FIX: Return Markdown link for the user to click
+    return f"I have generated the search results for **'{query}'**. Please click here: [Search Results]({url})"
 
 @add_tool
 def play_on_youtube(topic: str):
-    """Opens YouTube and searches for the video topic."""
-    tool_output(f"Switching to direct YouTube search for: {topic}")
+    """Returns a clickable link for a YouTube search."""
+    tool_output(f"Generating YouTube link for: {topic}")
     
     search_query = f"{topic} song" 
     url = f"https://www.youtube.com/results?search_query={search_query}"
     
-    try:
-        webbrowser.open_new_tab(url)
-        return f"I have successfully searched for '{topic}' on YouTube and opened the results in a new tab for you, VIVEK."
-    except Exception as e:
-        return f"I encountered an error trying to open YouTube. Details: {e}"
+    # FIX: Return Markdown link for the user to click
+    return f"I have prepared the YouTube search for **'{topic}'**. Please click here: [Watch on YouTube]({url})"
 
 @add_tool
 def check_current_time():
@@ -164,7 +134,7 @@ if "chat_session" not in st.session_state:
     
     tool_config = types.GenerateContentConfig(
         tools=tool_list,
-        # *** Final System Instruction Fix: Prioritize internal knowledge ***
+        # *** System Instruction refined to prioritize internal knowledge ***
         system_instruction="You are a dedicated, witty, and highly capable personal AI assistant named 'Nexus'. Your name is NEXUS.AI and the user's name is VIVEK. **Only use the web_search tool for requests requiring current, real-time data (like news or stock prices), or for opening a specific website/video. For general knowledge and definitions (like 'what is RAM'), answer using your internal knowledge base directly.** You process image requests if a file is uploaded, and use tools to perform actions. Keep responses concise and professional."
     )
 
