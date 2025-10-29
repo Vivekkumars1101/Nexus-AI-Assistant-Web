@@ -3,7 +3,6 @@ import os
 import json
 import re
 import webbrowser
-import pywhatkit
 import datetime
 import threading
 from pathlib import Path
@@ -241,6 +240,7 @@ if prompt := st.chat_input("Ask Nexus a question or command a task..."):
         
         st.markdown(response_text)
         st.session_state.messages.append({"role": "assistant", "content": response_text})
+
 
 
 
