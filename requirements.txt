@@ -2,6 +2,6 @@ streamlit
 google-genai
 python-dotenv
 Pillow
-pywhatkit
 # Optional: If you used threading logic, keep this:
 # greenlet (Needed for gevent/greenlet handling that Streamlit may require)
+
